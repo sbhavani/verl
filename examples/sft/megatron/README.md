@@ -6,7 +6,7 @@ This directory contains Docker Compose configuration and scripts for testing the
 
 - Docker and Docker Compose installed
 - NVIDIA Container Toolkit installed (for GPU support)
-- At least 8 GPUs available (configuration can be adjusted in the docker-compose.yml file)
+- 2 GPUs (works well on consumer GPUs like RTX 4090)
 
 ## Setup
 
@@ -31,10 +31,9 @@ Start the Docker Compose environment:
 docker-compose up -d
 ```
 
-This will create three containers:
-- `ray-head`: Ray head node with 4 GPUs
-- `ray-worker`: Ray worker node with 4 GPUs
-- `megatron-sft`: Container that runs the Megatron SFT example
+This will create two containers:
+- `ray-head`: Ray head node with 2 GPUs
+- `megatron-sft`: Container that runs the Megatron SFT example with tensor parallelism across 2 GPUs
 
 ## Monitoring the Test
 
@@ -58,26 +57,34 @@ docker-compose down
 
 The Docker Compose environment can be customized by modifying the following files:
 
-- `docker-compose.yml`: Adjust GPU allocation, container resources, and network settings
+- `docker-compose.yml`: Adjust resource allocation and network settings
 - `run_llama2_7b_megatron.sh`: Modify training parameters, model configuration, and data paths
+
+## About Model Parallelism
+
+This setup demonstrates tensor parallelism across 2 GPUs, which is one of the key features of Megatron-LM. The 7B LLaMA model is split across two GPUs, with each GPU holding part of the model layers. This allows training larger models than would fit on a single GPU.
+
+The configuration uses:
+- Tensor parallel size: 2 (splits model parameters across 2 GPUs)
+- Pipeline parallel size: 1 (no pipeline parallelism in this config)
 
 ## Using Your Own Data
 
 To use your own data:
 
-1. Place your parquet files in `/tmp/data/sft/` or update the volume mount paths in `docker-compose.yml`
-2. Modify the `run_llama2_7b_megatron.sh` script to point to your data files
+1. Place your parquet files in `/tmp/data/sft/` or update the volume mount paths in the docker-compose files
+2. Modify the appropriate run script to point to your data files
 
 ## Troubleshooting
 
 - If containers fail to start, check if the required GPUs are available and visible to Docker
 - If out of memory errors occur, try reducing batch sizes or model parallelism dimensions
-- For NCCL errors, ensure that all GPUs are on the same NUMA node or adjust NCCL settings
+- For NCCL errors, ensure that all GPUs are connected properly (should be on the same PCIe switch)
 
 ## Further Customization
 
 For more complex testing scenarios:
 
-- Add more worker nodes by adding new services in the docker-compose.yml file
-- Test different model sizes by adjusting the model path and parallelism settings
-- Experiment with different parallelism configurations by modifying tensor/pipeline settings 
+- Test with smaller models (e.g., TinyLlama) if memory is limited
+- Try different configurations of tensor and pipeline parallelism
+- Experiment with different micro batch sizes to optimize GPU utilization 
