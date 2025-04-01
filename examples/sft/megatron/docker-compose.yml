@@ -1,0 +1,108 @@
+version: '3'
+
+services:
+  ray-head:
+    image: nvcr.io/nvidia/pytorch:23.12-py3
+    container_name: ray-head
+    ports:
+      - "8265:8265"  # Ray dashboard
+      - "6379:6379"  # Redis port
+      - "10001:10001"  # Ray object manager
+      - "8080:8080"   # Web visualization (if any)
+    volumes:
+      - ../../..:/workspace/verl  # Mount the verl repository
+      - /path/to/data:/workspace/data  # Replace with your data path
+      - /path/to/checkpoints:/workspace/checkpoints  # Replace with your checkpoint path
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0,1,2,3  # Adjust according to your GPU setup
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - RAY_HEAD_IP=ray-head
+      - RAY_NUM_GPUS=4  # Change based on your setup
+    command: >
+      bash -c "cd /workspace/verl && 
+               pip install --no-cache-dir -e . &&
+               pip install ray[default]==2.9.3 &&
+               pip install nvtx wandb transformers accelerate &&
+               python -m ray.init --head --port=6379 --dashboard-host=0.0.0.0 --num-gpus=4 &&
+               sleep infinity"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 4  # Adjust based on your GPU availability
+              capabilities: [gpu]
+    networks:
+      - ray_network
+
+  ray-worker:
+    image: nvcr.io/nvidia/pytorch:23.12-py3
+    depends_on:
+      - ray-head
+    volumes:
+      - ../../..:/workspace/verl  # Mount the verl repository
+      - /path/to/data:/workspace/data  # Replace with your data path
+      - /path/to/checkpoints:/workspace/checkpoints  # Replace with your checkpoint path
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=4,5,6,7  # Adjust according to your GPU setup
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - RAY_HEAD_IP=ray-head
+      - RAY_NUM_GPUS=4  # Change based on your setup
+    command: >
+      bash -c "cd /workspace/verl && 
+               pip install --no-cache-dir -e . &&
+               pip install ray[default]==2.9.3 &&
+               pip install nvtx wandb transformers accelerate &&
+               python -m ray.init --address=ray-head:6379 --num-gpus=4 &&
+               sleep infinity"
+    deploy:
+      replicas: 1  # Adjust number of worker nodes as needed
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 4  # Adjust based on your GPU availability
+              capabilities: [gpu]
+    networks:
+      - ray_network
+
+  # Container for running megatron SFT example
+  megatron-sft:
+    image: nvcr.io/nvidia/pytorch:23.12-py3
+    container_name: megatron-sft
+    depends_on:
+      - ray-head
+    volumes:
+      - ../../..:/workspace/verl  # Mount the verl repository
+      - /path/to/data:/workspace/data  # Replace with your data path
+      - /path/to/checkpoints:/workspace/checkpoints  # Replace with your checkpoint path
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7  # Adjust according to your GPU setup
+    command: >
+      bash -c "cd /workspace/verl && 
+               pip install --no-cache-dir -e . &&
+               pip install ray[default]==2.9.3 &&
+               pip install nvtx wandb transformers accelerate &&
+               pip install megatron-core &&
+               # Clone and install Megatron-LM
+               git clone https://github.com/NVIDIA/Megatron-LM.git /workspace/Megatron-LM &&
+               cd /workspace/Megatron-LM &&
+               pip install -e . &&
+               cd /workspace/verl &&
+               # Sleep to allow Ray to initialize fully
+               sleep 10 &&
+               # Run the example script
+               bash examples/sft/megatron/run_llama2_7b_megatron.sh 8 /workspace/checkpoints/llama2-7b-megatron-sft"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 8  # Adjust based on your GPU availability
+              capabilities: [gpu]
+    networks:
+      - ray_network
+
+networks:
+  ray_network:
+    driver: bridge 

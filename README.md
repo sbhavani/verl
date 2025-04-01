@@ -54,7 +54,7 @@ verl is fast with:
 - **FSDP** and **Megatron-LM** for training.
 - **vLLM**, **SGLang**(experimental) and **HF Transformers** for rollout generation.
 - Compatible with Hugging Face Transformers and Modelscope Hub: Qwen-2.5, Llama3.1, Gemma2, DeepSeek-LLM, etc
-- Supervised fine-tuning.
+- Supervised fine-tuning with [FSDP](examples/sft/gsm8k/run_qwen_05_sp2.sh) and [Megatron-LM](docs/advanced/megatron_sft.md) backends.
 - Reinforcement learning with [PPO](examples/ppo_trainer/), [GRPO](examples/grpo_trainer/), [ReMax](examples/remax_trainer/), [REINFORCE++](https://verl.readthedocs.io/en/latest/examples/config.html#algorithm), [RLOO](examples/rloo_trainer/), [PRIME](recipe/prime/), etc.
   - Support model-based reward and function-based reward (verifiable reward)
   - Support vision-language models (VLMs) and [multi-modal RL](examples/grpo_trainer/run_qwen2_5_vl-7b.sh)

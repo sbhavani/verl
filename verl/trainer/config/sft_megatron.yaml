@@ -1,0 +1,83 @@
+# Copyright 2024 Bytedance Ltd. and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Megatron SFT worker configuration
+"""
+
+# Model configuration
+model:
+  name: megatron-sft
+  partial_pretrain: "llama2-7b" # Replace with actual model path
+  load_weight: true
+  trust_remote_code: true
+  enable_gradient_checkpointing: true
+  override_config: {}
+  megatron:
+    tensor_model_parallel_size: 2
+    pipeline_model_parallel_size: 2
+    virtual_pipeline_model_parallel_size: 2
+    sequence_parallel: false
+    seed: 42
+    use_distributed_optimizer: true
+    params_dtype: "bfloat16"
+
+# Training configuration
+training:
+  micro_batch_size_per_gpu: 4
+  gradient_accumulation_steps: 4
+  use_rmpad: true  # Remove padding for efficiency
+
+# Optimizer configuration
+optimizer:
+  lr: 2.0e-5
+  weight_decay: 0.0
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_eps: 1.0e-8
+  warmup_steps: 100
+
+# Scheduler configuration
+scheduler:
+  type: cosine
+  min_lr_ratio: 0.1
+
+# Trainer configuration
+trainer:
+  max_steps: 10000
+  val_check_interval: 500
+  save_interval: 1000
+  project_name: megatron-sft
+  experiment_name: megatron-sft-llama2-7b
+
+# Data configuration
+data:
+  train_files:
+    - "/path/to/train_data.parquet" # Replace with actual data path
+  val_files:
+    - "/path/to/val_data.parquet"   # Replace with actual data path
+  micro_batch_size_per_gpu: 4
+  train_batch_size: 64
+  sequence_length: 2048
+  pad_token_id: 0
+  
+  # If using custom dataset implementation
+  custom_cls:
+    path: null
+    name: null
+
+# Checkpoint configuration
+checkpoint:
+  save_dir: "/path/to/checkpoints" # Replace with actual save path
+  resume_from_checkpoint: null
+  save_top_k: 3 
